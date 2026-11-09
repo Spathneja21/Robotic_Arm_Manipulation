@@ -1,0 +1,9 @@
+# We plan with OMPL, not Pilz - this file exists only because
+# MoveItConfigsBuilder.to_moveit_configs() loads it unconditionally and
+# errors if it's missing. Limits are unused unless the Pilz planner is
+# selected for a group in ompl_planning.yaml / a custom pipeline.
+cartesian_limits:
+  max_trans_vel: 1.0
+  max_trans_acc: 2.25
+  max_trans_dec: -5.0
+  max_rot_vel: 1.57

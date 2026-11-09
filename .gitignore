@@ -1,0 +1,7 @@
+/build
+/install
+/log
+/runs
+__pycache__/
+process.md
+PLAN.md

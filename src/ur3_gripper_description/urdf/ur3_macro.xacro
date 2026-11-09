@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <!-- Reusable inertia for a cylinder about its own centre.
+       Saves hand-typing 7 inertia tensors and keeps them consistent. -->
+  <xacro:macro name="cylinder_inertial" params="radius length mass *origin">
+    <inertial>
+      <mass value="${mass}"/>
+      <xacro:insert_block name="origin"/>
+      <inertia
+        ixx="${0.0833333 * mass * (3 * radius * radius + length * length)}" ixy="0.0" ixz="0.0"
+        iyy="${0.0833333 * mass * (3 * radius * radius + length * length)}" iyz="0.0"
+        izz="${0.5 * mass * radius * radius}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="ur3_arm" params="prefix parent">
+
+    <!-- ===== Kinematics, from urcontrol.conf (DH-style parameters) ===== -->
+    <xacro:property name="d1" value="0.1519"/>
+    <xacro:property name="a2" value="-0.24365"/>
+    <xacro:property name="a3" value="-0.21325"/>
+    <xacro:property name="d4" value="0.11235"/>
+    <xacro:property name="d5" value="0.08535"/>
+    <xacro:property name="d6" value="0.0819"/>
+
+    <!-- Offsets measured from the CAD model, not from urcontrol.conf -->
+    <xacro:property name="shoulder_offset" value="0.1198"/>
+    <xacro:property name="elbow_offset" value="-0.0925"/>
+
+    <!-- Link lengths derived from the above -->
+    <xacro:property name="shoulder_height"  value="${d1}"/>
+    <xacro:property name="upper_arm_length" value="${-a2}"/>
+    <xacro:property name="forearm_length"   value="${-a3}"/>
+    <xacro:property name="wrist_1_length"   value="${d4 - elbow_offset - shoulder_offset}"/>
+    <xacro:property name="wrist_2_length"   value="${d5}"/>
+    <xacro:property name="wrist_3_length"   value="${d6}"/>
+
+    <!-- ===== Masses ===== -->
+    <xacro:property name="base_mass"      value="2.0"/>
+    <xacro:property name="shoulder_mass"  value="2.0"/>
+    <xacro:property name="upper_arm_mass" value="3.42"/>
+    <xacro:property name="forearm_mass"   value="1.26"/>
+    <xacro:property name="wrist_1_mass"   value="0.8"/>
+    <xacro:property name="wrist_2_mass"   value="0.8"/>
+    <xacro:property name="wrist_3_mass"   value="0.35"/>
+
+    <!-- file:// + $(find pkg), not package://, matching robotiq_description's
+         own pattern - $(find pkg) resolves to a real absolute filesystem path
+         at xacro-expand time, so Gazebo/Ignition needs no ROS-aware resolver
+         to load it. package:// is left unresolved and silently skipped. -->
+    <xacro:property name="mesh_pkg" value="file://$(find ur3_gripper_description)/meshes"/>
+
+    <material name="LightGrey">
+      <color rgba="0.7 0.7 0.7 1.0"/>
+    </material>
+
+    <!-- ===== Attach to whatever we were given ===== -->
+    <joint name="${prefix}base_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- ===== Links and joints ===== -->
+    <link name="${prefix}base_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/base.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/base.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="0.038" mass="${base_mass}">
+        <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}shoulder_pan_joint" type="revolute">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}shoulder_link"/>
+      <origin xyz="0.0 0.0 ${shoulder_height}" rpy="0.0 0.0 0.0"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="330.0" velocity="2.16"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}shoulder_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/shoulder.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/shoulder.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="0.178" mass="${shoulder_mass}">
+        <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}shoulder_lift_joint" type="revolute">
+      <parent link="${prefix}shoulder_link"/>
+      <child link="${prefix}upper_arm_link"/>
+      <origin xyz="0.0 ${shoulder_offset} 0.0" rpy="0.0 ${pi / 2.0} 0.0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="330.0" velocity="2.16"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}upper_arm_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/upperarm.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/upperarm.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="${-a2}" mass="${upper_arm_mass}">
+        <origin xyz="0.0 0.0 ${-a2 / 2.0}" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}elbow_joint" type="revolute">
+      <parent link="${prefix}upper_arm_link"/>
+      <child link="${prefix}forearm_link"/>
+      <origin xyz="0.0 ${elbow_offset} ${upper_arm_length}" rpy="0.0 0.0 0.0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-pi}" upper="${pi}" effort="150.0" velocity="3.15"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}forearm_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/forearm.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/forearm.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="${-a3}" mass="${forearm_mass}">
+        <origin xyz="0.0 0.0 ${-a3 / 2.0}" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}wrist_1_joint" type="revolute">
+      <parent link="${prefix}forearm_link"/>
+      <child link="${prefix}wrist_1_link"/>
+      <origin xyz="0.0 0.0 ${forearm_length}" rpy="0.0 ${pi / 2.0} 0.0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="3.2"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}wrist_1_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/wrist1.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/wrist1.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="0.12" mass="${wrist_1_mass}">
+        <origin xyz="0.0 ${wrist_1_length} 0.0" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}wrist_2_joint" type="revolute">
+      <parent link="${prefix}wrist_1_link"/>
+      <child link="${prefix}wrist_2_link"/>
+      <origin xyz="0.0 ${wrist_1_length} 0.0" rpy="0.0 0.0 0.0"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="3.2"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}wrist_2_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/wrist2.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/wrist2.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.075" length="0.12" mass="${wrist_2_mass}">
+        <origin xyz="0.0 0.0 ${wrist_2_length}" rpy="0 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <joint name="${prefix}wrist_3_joint" type="revolute">
+      <parent link="${prefix}wrist_2_link"/>
+      <child link="${prefix}wrist_3_link"/>
+      <origin xyz="0.0 0.0 ${wrist_2_length}" rpy="0.0 0.0 0.0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="3.2"/>
+      <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+
+    <link name="${prefix}wrist_3_link">
+      <visual>
+        <geometry><mesh filename="${mesh_pkg}/visual/wrist3.dae"/></geometry>
+        <material name="LightGrey"/>
+      </visual>
+      <collision>
+        <geometry><mesh filename="${mesh_pkg}/collision/wrist3.stl"/></geometry>
+      </collision>
+      <xacro:cylinder_inertial radius="0.032" length="0.04" mass="${wrist_3_mass}">
+        <origin xyz="0.0 ${wrist_3_length - 0.02} 0.0" rpy="${pi / 2} 0 0"/>
+      </xacro:cylinder_inertial>
+    </link>
+
+    <!-- Frame coincident with the all-zeros TCP on the UR controller.
+         This is the gripper mounting point in Phase 2. -->
+    <link name="${prefix}tool0"/>
+    <joint name="${prefix}wrist_3_link-tool0_fixed_joint" type="fixed">
+      <parent link="${prefix}wrist_3_link"/>
+      <child link="${prefix}tool0"/>
+      <origin xyz="0 ${wrist_3_length} 0" rpy="${pi / -2.0} 0 0"/>
+    </joint>
+
+  </xacro:macro>
+</robot>

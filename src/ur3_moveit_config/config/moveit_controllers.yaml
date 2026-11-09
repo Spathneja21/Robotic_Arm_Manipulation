@@ -1,0 +1,29 @@
+# Controller names and joint lists here MUST match
+# ur3_gripper_description/config/ur3_controllers.yaml exactly - MoveIt
+# sends FollowJointTrajectory action goals to these names over the network,
+# and a mismatch plans successfully but fails silently at execution.
+moveit_simple_controller_manager:
+  controller_names:
+    - arm_controller
+    - gripper_controller
+
+  arm_controller:
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+  gripper_controller:
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints:
+      - robotiq_85_left_knuckle_joint
+
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager

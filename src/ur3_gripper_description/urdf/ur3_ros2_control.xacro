@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="ur3_arm_ros2_control" params="prefix use_fake_hardware:=false">
+
+    <ros2_control name="UR3System" type="system">
+      <hardware>
+        <xacro:if value="${use_fake_hardware}">
+          <!-- No Gazebo/Ignition process running (e.g. MoveIt's standalone
+               demo launch) - just echo commands back as state. -->
+          <plugin>mock_components/GenericSystem</plugin>
+        </xacro:if>
+        <xacro:unless value="${use_fake_hardware}">
+          <!-- Only loadable from inside a running Ignition process - see
+               ur3.gazebo.xacro's <plugin> tag, which is what starts it. -->
+          <plugin>ign_ros2_control/IgnitionSystem</plugin>
+        </xacro:unless>
+      </hardware>
+
+      <xacro:macro name="arm_joint" params="joint_name">
+        <joint name="${joint_name}">
+          <command_interface name="position"/>
+          <state_interface name="position"/>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:macro>
+
+      <xacro:arm_joint joint_name="${prefix}shoulder_pan_joint"/>
+      <xacro:arm_joint joint_name="${prefix}shoulder_lift_joint"/>
+      <xacro:arm_joint joint_name="${prefix}elbow_joint"/>
+      <xacro:arm_joint joint_name="${prefix}wrist_1_joint"/>
+      <xacro:arm_joint joint_name="${prefix}wrist_2_joint"/>
+      <xacro:arm_joint joint_name="${prefix}wrist_3_joint"/>
+    </ros2_control>
+
+  </xacro:macro>
+</robot>

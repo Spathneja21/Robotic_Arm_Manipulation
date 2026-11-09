@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur3_gripper">
+
+  <xacro:arg name="sim_ignition" default="true"/>
+  <xacro:arg name="use_fake_hardware" default="false"/>
+
+  <xacro:include filename="$(find ur3_gripper_description)/urdf/ur3_macro.xacro"/>
+  <xacro:include filename="$(find ur3_gripper_description)/urdf/ur3_ros2_control.xacro"/>
+  <xacro:include filename="$(find ur3_gripper_description)/urdf/ur3.gazebo.xacro"/>
+  <xacro:include filename="$(find robotiq_description)/urdf/ur_to_robotiq_adapter.urdf.xacro"/>
+  <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:ur3_arm prefix="" parent="world"/>
+  <xacro:ur3_arm_ros2_control prefix="" use_fake_hardware="$(arg use_fake_hardware)"/>
+
+  <xacro:ur_to_robotiq prefix="" connected_to="tool0"/>
+
+  <!-- sim_ignition and use_fake_hardware are mutually exclusive - the
+       launch file requesting one must set the other to false. -->
+  <xacro:robotiq_gripper
+    name="RobotiqGripperHardwareInterface"
+    prefix=""
+    parent="gripper_mount_link"
+    include_ros2_control="true"
+    sim_ignition="$(arg sim_ignition)"
+    use_fake_hardware="$(arg use_fake_hardware)">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:robotiq_gripper>
+
+  <xacro:ur3_gazebo controllers_yaml="$(find ur3_gripper_description)/config/ur3_controllers.yaml"/>
+
+</robot>
